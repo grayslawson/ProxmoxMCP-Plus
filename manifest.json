@@ -23,7 +23,6 @@
             ],
             "env": {
                 "PYTHONPATH": "${__dirname}/src",
-                "PROXMOX_MCP_CONFIG": "${user_config.config_path}",
                 "PROXMOX_HOST": "${user_config.proxmox_host}",
                 "PROXMOX_USER": "${user_config.proxmox_user}",
                 "PROXMOX_TOKEN_NAME": "${user_config.proxmox_token_name}",
@@ -206,12 +205,6 @@
             "title": "Verify SSL",
             "description": "Set to 'true' or 'false'",
             "default": "false",
-            "required": false
-        },
-        "config_path": {
-            "type": "file",
-            "title": "Config Path",
-            "description": "Optional: Path to an existing config.json file on this host",
             "required": false
         }
     },

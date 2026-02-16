@@ -12,6 +12,7 @@ and valid before the server starts operation.
 """
 import json
 import os
+import sys
 from typing import Optional
 from .models import Config
 
@@ -39,30 +40,42 @@ def load_config(config_path: Optional[str] = None) -> Config:
              raise ValueError(f"Failed to load config file: {e}")
     
     # 2. Layer in environment variables (overriding or providing defaults)
+    def get_env_safe(key: str, default: Optional[str] = None) -> Optional[str]:
+        val = os.getenv(key)
+        # Check if the hub passed an unresolved placeholder like "${user_config...}"
+        if not val or val.startswith("${"):
+            return default
+        return val
+
     # Proxmox Section
     if 'proxmox' not in config_data:
         config_data['proxmox'] = {}
     
-    env_host = os.getenv("PROXMOX_HOST")
+    env_host = get_env_safe("PROXMOX_HOST")
     if env_host: config_data['proxmox']['host'] = env_host
     
-    env_port = os.getenv("PROXMOX_PORT")
-    if env_port: config_data['proxmox']['port'] = int(env_port)
+    env_port = get_env_safe("PROXMOX_PORT")
+    if env_port:
+        try:
+            config_data['proxmox']['port'] = int(env_port)
+        except (ValueError, TypeError):
+             print(f"Warning: Invalid PROXMOX_PORT '{env_port}', using default 8006", file=sys.stderr)
+             config_data['proxmox']['port'] = 8006
     
-    env_ssl = os.getenv("PROXMOX_VERIFY_SSL")
+    env_ssl = get_env_safe("PROXMOX_VERIFY_SSL")
     if env_ssl: config_data['proxmox']['verify_ssl'] = env_ssl.lower() == 'true'
 
     # Auth Section
     if 'auth' not in config_data:
         config_data['auth'] = {}
     
-    env_user = os.getenv("PROXMOX_USER")
+    env_user = get_env_safe("PROXMOX_USER")
     if env_user: config_data['auth']['user'] = env_user
     
-    env_token_name = os.getenv("PROXMOX_TOKEN_NAME")
+    env_token_name = get_env_safe("PROXMOX_TOKEN_NAME")
     if env_token_name: config_data['auth']['token_name'] = env_token_name
     
-    env_token_value = os.getenv("PROXMOX_TOKEN_VALUE")
+    env_token_value = get_env_safe("PROXMOX_TOKEN_VALUE")
     if env_token_value: config_data['auth']['token_value'] = env_token_value
 
     # Logging & MCP Section defaults

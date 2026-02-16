@@ -475,9 +475,6 @@ class ProxmoxMCPServer:
             sys.exit(1)
 
 if __name__ == "__main__":
-    # Immediate heartbeat for bundle debugging
-    print("Starting Proxmox MCP Server...", file=sys.stderr)
-    
     config_path = os.getenv("PROXMOX_MCP_CONFIG")
     
     try:
