@@ -16,59 +16,68 @@ from typing import Optional
 from .models import Config
 
 def load_config(config_path: Optional[str] = None) -> Config:
-    """Load and validate configuration from JSON file.
+    """Load and validate configuration from JSON file or environment.
 
     Performs the following steps:
-    1. Verifies config path is provided
-    2. Loads JSON configuration file
+    1. If config_path is provided and exists, loads JSON configuration
+    2. Otherwise, attempts to build configuration from environment variables
     3. Validates required fields are present
-    4. Converts to typed Config object using Pydantic
-    
-    Configuration must include:
-    - Proxmox connection settings (host, port, etc.)
-    - Authentication credentials (user, token)
-    - Logging configuration
     
     Args:
         config_path: Path to the JSON configuration file
-                    If not provided, raises ValueError
-
-    Returns:
-        Config object containing validated configuration:
-        {
-            "proxmox": {
-                "host": "proxmox-host",
-                "port": 8006,
-                ...
-            },
-            "auth": {
-                "user": "username",
-                "token_name": "token-name",
-                ...
-            },
-            "logging": {
-                "level": "INFO",
-                ...
-            }
-        }
-
-    Raises:
-        ValueError: If:
-                 - Config path is not provided
-                 - JSON is invalid
-                 - Required fields are missing
-                 - Field values are invalid
     """
-    if not config_path:
-        raise ValueError("PROXMOX_MCP_CONFIG environment variable must be set")
+    config_data = {}
+
+    # 1. Try loading from file if path exists
+    if config_path and os.path.exists(config_path):
+        try:
+            with open(config_path) as f:
+                config_data = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in config file: {e}")
+        except Exception as e:
+             raise ValueError(f"Failed to load config file: {e}")
+    
+    # 2. Layer in environment variables (overriding or providing defaults)
+    # Proxmox Section
+    if 'proxmox' not in config_data:
+        config_data['proxmox'] = {}
+    
+    env_host = os.getenv("PROXMOX_HOST")
+    if env_host: config_data['proxmox']['host'] = env_host
+    
+    env_port = os.getenv("PROXMOX_PORT")
+    if env_port: config_data['proxmox']['port'] = int(env_port)
+    
+    env_ssl = os.getenv("PROXMOX_VERIFY_SSL")
+    if env_ssl: config_data['proxmox']['verify_ssl'] = env_ssl.lower() == 'true'
+
+    # Auth Section
+    if 'auth' not in config_data:
+        config_data['auth'] = {}
+    
+    env_user = os.getenv("PROXMOX_USER")
+    if env_user: config_data['auth']['user'] = env_user
+    
+    env_token_name = os.getenv("PROXMOX_TOKEN_NAME")
+    if env_token_name: config_data['auth']['token_name'] = env_token_name
+    
+    env_token_value = os.getenv("PROXMOX_TOKEN_VALUE")
+    if env_token_value: config_data['auth']['token_value'] = env_token_value
+
+    # Logging & MCP Section defaults
+    if 'logging' not in config_data:
+        config_data['logging'] = {}
+    if 'mcp' not in config_data:
+        config_data['mcp'] = {}
+
+    # Final validation check
+    if not config_data.get('proxmox', {}).get('host'):
+        raise ValueError("Proxmox host must be provided (via config file or PROXMOX_HOST env var)")
+    if not config_data.get('auth', {}).get('user'):
+        raise ValueError("Authentication credentials must be provided")
 
     try:
-        with open(config_path) as f:
-            config_data = json.load(f)
-            if not config_data.get('proxmox', {}).get('host'):
-                raise ValueError("Proxmox host cannot be empty")
-            return Config(**config_data)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in config file: {e}")
+        return Config(**config_data)
     except Exception as e:
-        raise ValueError(f"Failed to load config: {e}")
+        raise ValueError(f"Configuration validation failed: {e}")
