@@ -90,14 +90,15 @@ class ProxmoxManager:
             self.logger.info(f"Connecting to Proxmox host: {self.config['host']}")
             api = ProxmoxAPI(**self.config)
             
-            # Test connection
-            api.version.get()
-            self.logger.info("Successfully connected to Proxmox API")
+            # Test connection - Disabled for startup robustness
+            # api.version.get()
+            # self.logger.info("Successfully connected to Proxmox API")
             
             return api
         except Exception as e:
-            self.logger.error(f"Failed to connect to Proxmox: {e}")
-            raise RuntimeError(f"Failed to connect to Proxmox: {e}")
+            self.logger.warning(f"Initial Proxmox connection check failed: {e}. Tools will attempt reconnection on use.")
+            # Still return the API object; proxmoxer will retry on the next call
+            return ProxmoxAPI(**self.config)
 
     def get_api(self) -> ProxmoxAPI:
         """Get the initialized Proxmox API instance.

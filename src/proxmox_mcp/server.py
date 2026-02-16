@@ -475,6 +475,9 @@ class ProxmoxMCPServer:
             sys.exit(1)
 
 if __name__ == "__main__":
+    # Immediate heartbeat for bundle debugging
+    print("Starting Proxmox MCP Server...", file=sys.stderr)
+    
     config_path = os.getenv("PROXMOX_MCP_CONFIG")
     
     try:
@@ -484,5 +487,7 @@ if __name__ == "__main__":
         print("\nShutting down gracefully...", file=sys.stderr)
         sys.exit(0)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        print(f"Server initialization failed: {e}", file=sys.stderr)
         sys.exit(1)

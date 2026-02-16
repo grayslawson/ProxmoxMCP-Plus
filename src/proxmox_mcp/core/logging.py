@@ -63,9 +63,17 @@ def setup_logging(config: LoggingConfig) -> logging.Logger:
     handlers = []
     
     if log_file:
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setLevel(getattr(logging, config.level.upper()))
-        handlers.append(file_handler)
+        try:
+            # Ensure directory exists
+            log_dir = os.path.dirname(log_file)
+            if log_dir and not os.path.exists(log_dir):
+                os.makedirs(log_dir, exist_ok=True)
+                
+            file_handler = logging.FileHandler(log_file)
+            file_handler.setLevel(getattr(logging, config.level.upper()))
+            handlers.append(file_handler)
+        except Exception as e:
+            print(f"Warning: Could not set up file logging to {log_file}: {e}. Falling back to console only.", file=sys.stderr)
     
     # Console handler for errors only
     console_handler = logging.StreamHandler()
